@@ -16,15 +16,21 @@
       "group": { "kind": "test", "isDefault": true }
     },
     {
-      "label": "bmp-probe",
+      "label": "bmp-probe list",
       "type": "shell",
-      "command": "cargo run -p bmp-battery --bin bmp-probe",
+      "command": "cargo run -p bmp-probe -- list",
       "problemMatcher": ["$rustc"]
     },
     {
-      "label": "bmp-probe --json",
+      "label": "bmp-probe tiles",
       "type": "shell",
-      "command": "cargo run -p bmp-battery --bin bmp-probe -- --json",
+      "command": "cargo run -p bmp-probe -- tiles",
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "bmp-probe tiles --json",
+      "type": "shell",
+      "command": "cargo run -p bmp-probe -- tiles --json",
       "problemMatcher": ["$rustc"]
     }
   ]
