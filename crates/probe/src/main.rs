@@ -9,6 +9,7 @@ use std::process::ExitCode;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bmp_battery::{Device, DeviceKind, detect_all_devices};
+use bmp_config::merge::find_main_id;
 use bmp_config::{
     Config, apply_overrides, arrange_devices, choose_icon, find_config_path, is_device_shown,
     load_config, remember_devices, save_config,
@@ -50,7 +51,11 @@ enum Command {
     Icon { device: String, icon: String },
     /// Set the tile position; lower comes first
     Order { device: String, order: i32 },
-    /// Forget your settings for a device (show/name/kind/icon/order)
+    /// Merge a device into another one (same physical device, one tile)
+    Link { device: String, into: String },
+    /// Keep a device as its own tile and never merge it automatically
+    Unlink { device: String },
+    /// Forget your settings for a device (show/name/kind/icon/order/links)
     Reset { device: String },
     /// Print where the config file is
     Config,
@@ -66,6 +71,8 @@ struct ListEntry {
     shown: bool,
     /// Found right now (vs. only remembered in the config).
     detected: bool,
+    /// Main entry this one is merged into, if any.
+    merged_into: Option<String>,
     device: Option<Device>,
 }
 
@@ -124,22 +131,46 @@ fn run_command(command: Command) -> Result<(), String> {
         Command::Order { device, order } => {
             change_device_settings(&mut config, &devices, &device, |s| s.order = Some(order))
         }
+        Command::Link { device, into } => {
+            let main_id = resolve_device_id(&config, &devices, &into)?;
+            let main_id = find_main_id(&config, &main_id);
+            if resolve_device_id(&config, &devices, &device)? == main_id {
+                return Err("a device can't be merged into itself".to_owned());
+            }
+            change_device_settings(&mut config, &devices, &device, |s| {
+                s.same_as = Some(main_id);
+                s.keep_separate = None;
+            })
+        }
+        Command::Unlink { device } => change_device_settings(&mut config, &devices, &device, |s| {
+            s.same_as = None;
+            s.keep_separate = Some(true);
+        }),
         Command::Reset { device } => change_device_settings(&mut config, &devices, &device, |s| {
             s.show = None;
             s.name = None;
             s.kind = None;
             s.icon = None;
             s.order = None;
+            s.same_as = None;
+            s.keep_separate = None;
         }),
         Command::Config => unreachable!(),
     }
 }
 
 /// Prints every device the config knows (detected now or remembered),
-/// marking which ones go into the tiles.
+/// marking which ones go into the tiles and which are merged into another.
 fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<(), String> {
+    let tile_ids: Vec<String> = arrange_devices(config, devices.to_vec())
+        .into_iter()
+        .map(|d| d.id)
+        .collect();
     let mut entries = Vec::new();
     for (id, settings) in &config.devices {
+        let main_id = find_main_id(config, id);
+        let merged_into = (&main_id != id).then_some(main_id);
+        let shown = merged_into.is_none() && tile_ids.contains(id);
         let detected = devices.iter().find(|d| &d.id == id);
         let entry = match detected {
             Some(device) => {
@@ -149,8 +180,9 @@ fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<
                     name: shown_as.name,
                     kind: shown_as.kind,
                     icon: choose_icon(config, device),
-                    shown: is_device_shown(config, device),
+                    shown,
                     detected: true,
+                    merged_into,
                     device: Some(device.clone()),
                 }
             }
@@ -166,14 +198,20 @@ fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<
                     .or(settings.detected_kind)
                     .unwrap_or(DeviceKind::Other),
                 icon: settings.icon.clone().unwrap_or_default(),
-                shown: settings.show.unwrap_or(false),
+                shown,
                 detected: false,
+                merged_into,
                 device: None,
             },
         };
         entries.push(entry);
     }
-    entries.sort_by(|a, b| b.shown.cmp(&a.shown).then(a.kind.cmp(&b.kind)));
+    entries.sort_by(|a, b| {
+        b.shown
+            .cmp(&a.shown)
+            .then(a.merged_into.is_some().cmp(&b.merged_into.is_some()))
+            .then(a.kind.cmp(&b.kind))
+    });
 
     if json {
         let text = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
@@ -194,17 +232,21 @@ fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<
             .as_ref()
             .and_then(|d| d.battery)
             .map_or("-".to_owned(), |b| format!("{b}%"));
-        let state = e
+        let mut state = e
             .device
             .as_ref()
             .map_or("not found".to_owned(), describe_device_state);
+        if let Some(main_id) = &e.merged_into {
+            state = format!("{state} → part of {main_id}");
+        }
+        let tiles = match (&e.merged_into, e.shown) {
+            (Some(_), _) => "merged",
+            (None, true) => "shown",
+            (None, false) => "hidden",
+        };
         println!(
             "{:<7} {:<18} {:<9} {:<28} {:>7}  {state}",
-            if e.shown { "shown" } else { "hidden" },
-            e.id,
-            e.kind,
-            e.name,
-            battery
+            tiles, e.id, e.kind, e.name, battery
         );
     }
     println!("\nconfig: {}", find_config_path().display());
