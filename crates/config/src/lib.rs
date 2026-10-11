@@ -45,7 +45,7 @@ pub struct DeviceSettings {
     pub detected_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub detected_kind: Option<DeviceKind>,
-    /// Show in the tiles; when unset, devices that report a battery are shown.
+    /// Show in the tiles; when unset, devices with a live battery are shown.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub show: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -111,13 +111,14 @@ pub fn remember_devices(config: &mut Config, devices: &[Device]) -> bool {
 }
 
 /// Tells whether a device goes into the tiles: the user's choice if set,
-/// otherwise only devices that have reported a battery.
+/// otherwise only devices with a live battery (connected, value known), so
+/// a stale value from a switched-off device doesn't show up by itself.
 pub fn is_device_shown(config: &Config, device: &Device) -> bool {
     config
         .devices
         .get(&device.id)
         .and_then(|s| s.show)
-        .unwrap_or(device.battery.is_some())
+        .unwrap_or(device.has_live_battery())
 }
 
 /// Applies the user's name/kind overrides to a detected device.
@@ -214,6 +215,24 @@ mod tests {
             .map(|d| d.name)
             .collect();
         assert_eq!(names, ["Pad", "mouse"]);
+    }
+
+    /// Checks that a disconnected device with an old battery value is hidden
+    /// by default but can still be pinned by the user.
+    #[test]
+    fn hides_stale_devices_unless_pinned() {
+        let mut stale = make_device("bt:kb", DeviceKind::Keyboard, Some(100));
+        stale.connected = Some(false);
+        let mut config = Config::default();
+        assert!(!is_device_shown(&config, &stale));
+        config.devices.insert(
+            "bt:kb".into(),
+            DeviceSettings {
+                show: Some(true),
+                ..Default::default()
+            },
+        );
+        assert!(is_device_shown(&config, &stale));
     }
 
     /// Checks that remembering devices only reports a change when needed.
