@@ -6,11 +6,13 @@
 //!   shows in Settings → Bluetooth.
 //! - [`razer`]: Razer mice/keyboards over HID (OpenRazer protocol), which
 //!   covers the 2.4 GHz dongle and USB cable.
+//! - [`yunzii`]: YUNZII keyboards over their 2.4 GHz dongle.
 
 pub mod bluetooth;
 pub mod kind;
 pub mod razer;
 pub mod system;
+pub mod yunzii;
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -24,6 +26,7 @@ pub enum Source {
     System,
     Bluetooth,
     Razer,
+    Yunzii,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,6 +60,7 @@ pub fn detect_all_devices() -> Vec<Device> {
     let mut out: Vec<Device> = system::read_system_battery().into_iter().collect();
     out.extend(bluetooth::detect_bluetooth_devices().unwrap_or_default());
     out.extend(razer::detect_razer_devices().unwrap_or_default());
+    out.extend(yunzii::detect_yunzii_devices().unwrap_or_default());
     out
 }
 
