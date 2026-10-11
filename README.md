@@ -9,6 +9,7 @@ Customizable Windows 11 taskbar tiles showing your peripherals' battery — no h
 - **This PC** — the laptop battery, when there is one.
 - **Bluetooth devices** — every paired device, with the same charge Windows shows in Settings → Bluetooth, and whether it is connected right now (so a stale value from a switched-off device isn't shown as live).
 - **Razer devices** over the 2.4 GHz dongle or cable, using the OpenRazer HID protocol (read-only commands).
+- **YUNZII keyboards** over their 2.4 GHz dongle (`056D:C077`). The dongle reports the value the keyboard sent when it last connected.
 
 Each device gets a kind (mouse, keyboard, headset, gamepad, laptop, other) that picks its default icon.
 
@@ -29,7 +30,7 @@ cargo run -p bmp-probe -- order viper 1
 cargo run -p bmp-probe -- reset viper           # forget your settings for it
 ```
 
-By default every device that reports a battery is shown.
+By default every connected device that reports a battery is shown; a switched-off device with an old value stays hidden unless you `show` it.
 
 ## Build
 
