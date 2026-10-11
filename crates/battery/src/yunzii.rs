@@ -4,7 +4,9 @@
 //! 63 bytes each way). Command 0x05 is a read-only status query; in the
 //! answer byte 14 is the battery percent and byte 15 the voltage in tenths of
 //! a volt. The dongle caches what the keyboard reported when it last
-//! connected, so the value only refreshes on reconnect.
+//! connected, so the value only refreshes on reconnect — and the reply is
+//! byte-for-byte the same with the keyboard switched off, so whether it is
+//! connected right now can't be told.
 //!
 //! Protocol from https://lee-it.co.uk/linux/2026/05/03/wireless-peripheral-battery-linux.html
 //! (YUNZII B87, same dongle), confirmed on a B75 PRO MAX.
@@ -55,7 +57,7 @@ pub fn detect_yunzii_devices() -> HidResult<Vec<Device>> {
         source: Source::Yunzii,
         battery,
         charging: None,
-        connected: Some(battery.is_some()),
+        connected: None,
         updated_at: battery.map(|_| unix_now()),
     }])
 }
