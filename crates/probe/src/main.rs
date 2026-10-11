@@ -10,12 +10,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use bmp_battery::{Device, DeviceKind, detect_all_devices};
 use bmp_config::merge::find_main_id;
+use bmp_config::rows::{build_device_rows, build_tiles};
 use bmp_config::{
-    Config, apply_overrides, arrange_devices, choose_icon, find_config_path, is_device_shown,
-    load_config, remember_devices, save_config,
+    Config, find_config_path, is_device_shown, load_config, remember_devices, save_config,
 };
 use clap::{Parser, Subcommand};
-use serde::Serialize;
 
 #[derive(Parser)]
 #[command(
@@ -59,30 +58,6 @@ enum Command {
     Reset { device: String },
     /// Print where the config file is
     Config,
-}
-
-/// One row of `list --json`.
-#[derive(Serialize)]
-struct ListEntry {
-    id: String,
-    name: String,
-    kind: DeviceKind,
-    icon: String,
-    shown: bool,
-    /// Found right now (vs. only remembered in the config).
-    detected: bool,
-    /// Main entry this one is merged into, if any.
-    merged_into: Option<String>,
-    device: Option<Device>,
-}
-
-/// One tile of `tiles --json`, the shape the taskbar UI will consume.
-#[derive(Serialize)]
-struct TileEntry {
-    #[serde(flatten)]
-    device: Device,
-    icon: String,
-    live: bool,
 }
 
 /// Detects devices, remembers them in the config, then runs the subcommand.
@@ -162,57 +137,7 @@ fn run_command(command: Command) -> Result<(), String> {
 /// Prints every device the config knows (detected now or remembered),
 /// marking which ones go into the tiles and which are merged into another.
 fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<(), String> {
-    let tile_ids: Vec<String> = arrange_devices(config, devices.to_vec())
-        .into_iter()
-        .map(|d| d.id)
-        .collect();
-    let mut entries = Vec::new();
-    for (id, settings) in &config.devices {
-        let main_id = find_main_id(config, id);
-        let merged_into = (&main_id != id).then_some(main_id);
-        let shown = merged_into.is_none() && tile_ids.contains(id);
-        let detected = devices.iter().find(|d| &d.id == id);
-        let entry = match detected {
-            Some(device) => {
-                let shown_as = apply_overrides(config, device.clone());
-                ListEntry {
-                    id: id.clone(),
-                    name: shown_as.name,
-                    kind: shown_as.kind,
-                    icon: choose_icon(config, device),
-                    shown,
-                    detected: true,
-                    merged_into,
-                    device: Some(device.clone()),
-                }
-            }
-            None => ListEntry {
-                id: id.clone(),
-                name: settings
-                    .name
-                    .clone()
-                    .or_else(|| settings.detected_name.clone())
-                    .unwrap_or_else(|| id.clone()),
-                kind: settings
-                    .kind
-                    .or(settings.detected_kind)
-                    .unwrap_or(DeviceKind::Other),
-                icon: settings.icon.clone().unwrap_or_default(),
-                shown,
-                detected: false,
-                merged_into,
-                device: None,
-            },
-        };
-        entries.push(entry);
-    }
-    entries.sort_by(|a, b| {
-        b.shown
-            .cmp(&a.shown)
-            .then(a.merged_into.is_some().cmp(&b.merged_into.is_some()))
-            .then(a.kind.cmp(&b.kind))
-    });
-
+    let entries = build_device_rows(config, devices);
     if json {
         let text = serde_json::to_string_pretty(&entries).map_err(|e| e.to_string())?;
         println!("{text}");
@@ -255,14 +180,7 @@ fn print_device_list(config: &Config, devices: &[Device], json: bool) -> Result<
 
 /// Prints only the devices that go into the tiles, in tile order.
 fn print_tiles(config: &Config, devices: Vec<Device>, json: bool) -> Result<(), String> {
-    let tiles: Vec<TileEntry> = arrange_devices(config, devices)
-        .into_iter()
-        .map(|d| TileEntry {
-            icon: choose_icon(config, &d),
-            live: d.has_live_battery(),
-            device: d,
-        })
-        .collect();
+    let tiles = build_tiles(config, devices);
     if json {
         let text = serde_json::to_string_pretty(&tiles).map_err(|e| e.to_string())?;
         println!("{text}");
