@@ -27,10 +27,14 @@ cargo run -p bmp-probe -- show yunzii
 cargo run -p bmp-probe -- rename viper "Mouse"
 cargo run -p bmp-probe -- kind yunzii keyboard
 cargo run -p bmp-probe -- order viper 1
+cargo run -p bmp-probe -- link E78E yunzii      # same device from two sources, one tile
+cargo run -p bmp-probe -- unlink E78E           # keep it as its own tile
 cargo run -p bmp-probe -- reset viper           # forget your settings for it
 ```
 
 By default every connected device that reports a battery is shown; a switched-off device with an old value stays hidden unless you `show` it.
+
+The same device seen by two sources (e.g. a keyboard paired over Bluetooth that also has a 2.4 GHz dongle) is merged into one tile automatically when the kind matches and the names match ignoring case and spaces. The tile takes the freshest battery value of the two.
 
 ## Build
 
