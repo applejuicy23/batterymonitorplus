@@ -11,14 +11,21 @@
 //! name = "Viper"
 //! order = 1
 //!
+//! [devices."yunzii:c077"]
+//! detected_name = "YUNZII B75 PRO MAX"
+//! detected_kind = "keyboard"
+//!
 //! [devices."bt:E78E379B2DB7"]
 //! detected_name = "YUNZII B75PROMAX"
 //! detected_kind = "keyboard"
-//! show = false
+//! same_as = "yunzii:c077"
 //! ```
 //!
 //! `detected_*` are written by the app so the file is readable by hand;
-//! everything else is the user's.
+//! `same_as` is written when the same device is seen by two sources (see
+//! [`merge`]); everything else is the user's.
+
+pub mod merge;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -58,6 +65,12 @@ pub struct DeviceSettings {
     /// Lower comes first; unset devices go after, ordered by kind.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub order: Option<i32>,
+    /// Id of the entry this device is merged into (same physical device).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub same_as: Option<String>,
+    /// Never merge this device automatically.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub keep_separate: Option<bool>,
 }
 
 /// Works out where the config file lives.
@@ -96,7 +109,8 @@ pub fn save_config(config: &Config) -> io::Result<()> {
 }
 
 /// Records every detected device in the config (name and kind as detected),
-/// so devices stay listed and editable even while they're off.
+/// so devices stay listed and editable even while they're off, and links
+/// entries that are the same physical device.
 /// Returns `true` if anything changed and the config should be saved.
 pub fn remember_devices(config: &mut Config, devices: &[Device]) -> bool {
     let mut changed = false;
@@ -107,6 +121,7 @@ pub fn remember_devices(config: &mut Config, devices: &[Device]) -> bool {
         settings.detected_kind = Some(device.kind);
         changed |= *settings != before;
     }
+    changed |= merge::link_same_devices(config, devices);
     changed
 }
 
@@ -143,10 +158,11 @@ pub fn choose_icon(config: &Config, device: &Device) -> String {
         .unwrap_or_else(|| device.kind.as_str().to_owned())
 }
 
-/// Turns detected devices into what the tiles show: hidden ones dropped,
-/// overrides applied, sorted by the user's order, then kind, then name.
+/// Turns detected devices into what the tiles show: same devices merged,
+/// hidden ones dropped, overrides applied, sorted by the user's order, then
+/// kind, then name.
 pub fn arrange_devices(config: &Config, devices: Vec<Device>) -> Vec<Device> {
-    let mut shown: Vec<(i32, Device)> = devices
+    let mut shown: Vec<(i32, Device)> = merge::merge_same_devices(config, devices)
         .into_iter()
         .filter(|d| is_device_shown(config, d))
         .map(|d| {
