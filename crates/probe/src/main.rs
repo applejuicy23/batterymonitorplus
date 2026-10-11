@@ -328,7 +328,7 @@ fn describe_device_state(device: &Device) -> String {
         (_, Some(true)) => "charging".to_owned(),
         (_, Some(false)) => "on battery".to_owned(),
         (Some(true), None) => "connected".to_owned(),
-        (None, None) => "unknown".to_owned(),
+        (None, None) => "connection unknown".to_owned(),
     }
 }
 
