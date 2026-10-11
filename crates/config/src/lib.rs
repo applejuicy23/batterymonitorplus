@@ -26,11 +26,13 @@
 //! [`merge`]); everything else is the user's.
 
 pub mod merge;
+pub mod rows;
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use bmp_battery::{Device, DeviceKind};
 use serde::{Deserialize, Serialize};
@@ -38,12 +40,27 @@ use serde::{Deserialize, Serialize};
 const APP_DIR: &str = "BatteryMonitorPlus";
 const FILE_NAME: &str = "config.toml";
 const PATH_OVERRIDE_VAR: &str = "BMP_CONFIG";
+const DEFAULT_POLL_SECONDS: u64 = 60;
+const MIN_POLL_SECONDS: u64 = 5;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct Config {
+    /// How often the app re-reads batteries; 60 s when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub poll_seconds: Option<u64>,
     /// Per-device settings keyed by device id (`bt:...`, `razer:...`).
     #[serde(default)]
     pub devices: BTreeMap<String, DeviceSettings>,
+}
+
+/// Works out how long to wait between battery reads (at least 5 s, so a
+/// typo can't make the app hammer the devices).
+pub fn read_poll_interval(config: &Config) -> Duration {
+    let seconds = config
+        .poll_seconds
+        .unwrap_or(DEFAULT_POLL_SECONDS)
+        .max(MIN_POLL_SECONDS);
+    Duration::from_secs(seconds)
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
