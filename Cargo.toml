@@ -1,3 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/battery", "crates/config", "crates/probe"]
+members = ["crates/battery", "crates/config", "crates/probe", "app/src-tauri"]
+
+# https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

@@ -1,0 +1,23 @@
+[package]
+name = "bmp-app"
+version = "0.3.0"
+description = "BatteryMonitor+ — peripheral battery tiles for the Windows 11 taskbar"
+authors = ["applejuicy23"]
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[lib]
+# The `_lib` suffix keeps the lib name from clashing with the bin name on Windows,
+# see https://github.com/rust-lang/cargo/issues/8519
+name = "bmp_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bmp-battery = { path = "../../crates/battery" }
+bmp-config = { path = "../../crates/config" }
