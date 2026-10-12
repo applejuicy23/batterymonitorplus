@@ -8,9 +8,10 @@
     listenForSnapshots,
     refreshDevices,
     savePollSeconds,
+    saveTileLayout,
     updateDevice,
   } from "$lib/api";
-  import type { DeviceChange, Snapshot } from "$lib/types";
+  import type { DeviceChange, Snapshot, TileLayout } from "$lib/types";
 
   const POLL_CHOICES = [15, 30, 60, 120, 300];
 
@@ -65,6 +66,12 @@
     }
   }
 
+  /** Makes the picked layout the look of the taskbar tiles. */
+  async function changeTileLayout(layout: TileLayout) {
+    if (snapshot?.tile_layout === layout) return;
+    snapshot = await saveTileLayout(layout);
+  }
+
   /** Saves the picked poll interval. */
   async function changePollSeconds(event: Event) {
     const seconds = Number((event.target as HTMLSelectElement).value);
@@ -99,9 +106,9 @@
     <p class="loading">Looking for devices…</p>
   {:else}
     <section>
-      <h2>Tiles preview</h2>
+      <h2>Taskbar tiles</h2>
       <div class="card">
-        <TilePreview tiles={snapshot.tiles} />
+        <TilePreview tiles={snapshot.tiles} layout={snapshot.tile_layout} onPick={changeTileLayout} />
       </div>
     </section>
 
