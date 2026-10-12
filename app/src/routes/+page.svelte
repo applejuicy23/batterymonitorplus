@@ -9,6 +9,7 @@
     refreshDevices,
     resetTilesPosition,
     savePollSeconds,
+    saveTileEmbed,
     saveTileLayout,
     updateDevice,
   } from "$lib/api";
@@ -78,6 +79,11 @@
     snapshot = await resetTilesPosition();
   }
 
+  /** Switches the tiles between living inside the taskbar and floating over it. */
+  async function changeTileEmbed(event: Event) {
+    snapshot = await saveTileEmbed((event.target as HTMLInputElement).checked);
+  }
+
   /** Saves the picked poll interval. */
   async function changePollSeconds(event: Event) {
     const seconds = Number((event.target as HTMLSelectElement).value);
@@ -124,6 +130,13 @@
             <button onclick={resetPosition}>Back next to the tray</button>
           {/if}
         </div>
+        <label class="position embed">
+          <span>
+            Embed into the taskbar
+            <span class="hint">— moves and hides with it; turn off if the tiles look wrong</span>
+          </span>
+          <input type="checkbox" checked={snapshot.tile_embed} onchange={changeTileEmbed} />
+        </label>
       </div>
     </section>
 
@@ -215,6 +228,16 @@
     padding-top: 12px;
     border-top: 1px solid var(--stroke);
     font-size: 13px;
+  }
+  .embed {
+    margin-top: 8px;
+    padding-top: 8px;
+    cursor: pointer;
+  }
+  .embed input {
+    accent-color: var(--accent);
+    width: 16px;
+    height: 16px;
   }
   .hint {
     color: var(--text-secondary);
