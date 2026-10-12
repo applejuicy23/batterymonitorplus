@@ -46,10 +46,14 @@ export interface DeviceRow {
   settings: DeviceSettings;
 }
 
+export type TileLayout = "pills" | "combined" | "full";
+
 export interface Snapshot {
   tiles: Tile[];
   rows: DeviceRow[];
   poll_seconds: number;
+  tile_layout: TileLayout;
+  taskbar_light: boolean;
   config_path: string;
   error: string | null;
 }
