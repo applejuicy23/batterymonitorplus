@@ -2,7 +2,19 @@
 
 Customizable Windows 11 taskbar tiles showing your peripherals' battery — no hovering, no vendor apps.
 
-> Work in progress. Right now there is a device detector with per-device settings and a console tool; the taskbar tiles are next.
+> Work in progress. Right now there is a tray app with a settings window, a device detector and a console tool; the taskbar tiles are next.
+
+## The app
+
+```powershell
+cd app
+npm install
+npm run tauri dev
+```
+
+It lives in the tray: left click opens the settings window, the menu has *Refresh now* and *Quit*, and the tooltip lists every shown device with its charge. Closing the window only hides it. Batteries are re-read in the background (every minute by default, configurable in the window).
+
+The settings window previews the tiles and lists every device, where you can show or hide it, rename it, change its kind, reorder it, merge it into another device or reset it.
 
 ## What it detects
 
@@ -15,8 +27,8 @@ Each device gets a kind (mouse, keyboard, headset, gamepad, laptop, other) that 
 
 ## Choosing what the tiles show
 
-Settings live in `%APPDATA%\BatteryMonitorPlus\config.toml`. Until there's a UI, use `bmp-probe`
-(devices can be picked by id or by part of the name):
+Settings live in `%APPDATA%\BatteryMonitorPlus\config.toml`. Besides the settings window, `bmp-probe`
+can change them from the console (devices can be picked by id or by part of the name):
 
 ```powershell
 cargo run -p bmp-probe                          # all devices, shown or hidden
@@ -38,13 +50,14 @@ The same device seen by two sources (e.g. a keyboard paired over Bluetooth that 
 
 ## Build
 
-Requires Rust (MSVC toolchain) and Visual Studio Build Tools with the C++ workload.
+Requires Rust (MSVC toolchain), Visual Studio Build Tools with the C++ workload, and Node.js for the app.
 
 | Crate | What it does |
 |---|---|
 | `bmp-battery` | detects devices and reads their battery |
 | `bmp-config` | the user's per-device settings |
 | `bmp-probe` | console tool for both |
+| `bmp-app` (`app/`) | the Tauri tray app and settings window (Svelte) |
 
 ## License
 
