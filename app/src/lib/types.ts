@@ -53,6 +53,8 @@ export interface Snapshot {
   rows: DeviceRow[];
   poll_seconds: number;
   tile_layout: TileLayout;
+  /** Logical px from the taskbar's right edge; null = next to the tray. */
+  tile_offset: number | null;
   taskbar_light: boolean;
   config_path: string;
   error: string | null;
