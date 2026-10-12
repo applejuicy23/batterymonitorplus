@@ -51,6 +51,11 @@ pub struct Config {
     /// How the taskbar tiles are drawn; one pill per device when unset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tile_layout: Option<TileLayout>,
+    /// Distance from the taskbar's right edge to the tiles' right edge, in
+    /// logical pixels; set by dragging the tiles. When unset, the tiles sit
+    /// left of the tray (wrong on restyled taskbars, hence the override).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile_offset: Option<i32>,
     /// Per-device settings keyed by device id (`bt:...`, `razer:...`).
     #[serde(default)]
     pub devices: BTreeMap<String, DeviceSettings>,
