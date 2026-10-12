@@ -33,6 +33,21 @@ export function reportTilesWidth(width: number): Promise<void> {
   return invoke("set_tiles_width", { width });
 }
 
+/** Shifts the tiles sideways while they're dragged (`dx` in px, positive = right). */
+export function moveTilesBy(dx: number): Promise<void> {
+  return invoke("move_tiles_by", { dx });
+}
+
+/** Saves where the tiles were dropped. */
+export function saveTilesPosition(): Promise<Snapshot> {
+  return invoke<Snapshot>("save_tiles_position");
+}
+
+/** Puts the tiles back next to the tray. */
+export function resetTilesPosition(): Promise<Snapshot> {
+  return invoke<Snapshot>("reset_tiles_position");
+}
+
 /** Opens the settings window. */
 export function openSettings(): Promise<void> {
   return invoke("open_settings");
