@@ -56,6 +56,10 @@ pub struct Config {
     /// left of the tray (wrong on restyled taskbars, hence the override).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tile_offset: Option<i32>,
+    /// Put the tiles inside the taskbar window (moves and hides with it)
+    /// instead of floating over it; on when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile_embed: Option<bool>,
     /// Per-device settings keyed by device id (`bt:...`, `razer:...`).
     #[serde(default)]
     pub devices: BTreeMap<String, DeviceSettings>,
