@@ -1,0 +1,7 @@
+// Prevents an extra console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+/// Starts BatteryMonitor+.
+fn main() {
+    bmp_app_lib::run_app()
+}
