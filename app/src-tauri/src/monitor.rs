@@ -30,6 +30,8 @@ pub struct Snapshot {
     pub tile_layout: TileLayout,
     /// Saved spot of the tiles (see [`bmp_config::Config::tile_offset`]).
     pub tile_offset: Option<i32>,
+    /// Tiles live inside the taskbar window instead of floating over it.
+    pub tile_embed: bool,
     /// The taskbar's own theme, which the tiles follow.
     pub taskbar_light: bool,
     pub config_path: String,
@@ -98,6 +100,7 @@ pub fn build_snapshot(app: &AppHandle) -> Snapshot {
             poll_seconds: read_poll_interval(&config).as_secs(),
             tile_layout: config.tile_layout.unwrap_or_default(),
             tile_offset: config.tile_offset,
+            tile_embed: config.tile_embed.unwrap_or(true),
             taskbar_light: is_taskbar_light(),
             config_path,
             error: None,
