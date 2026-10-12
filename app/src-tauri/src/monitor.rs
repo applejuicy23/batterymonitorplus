@@ -10,10 +10,13 @@ use std::thread;
 
 use bmp_battery::{Device, detect_all_devices};
 use bmp_config::rows::{DeviceRow, Tile, build_device_rows, build_tiles};
-use bmp_config::{find_config_path, load_config, read_poll_interval, remember_devices, save_config};
+use bmp_config::{
+    TileLayout, find_config_path, load_config, read_poll_interval, remember_devices, save_config,
+};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::taskbar::is_taskbar_light;
 use crate::tray::update_tray_tooltip;
 
 pub const SNAPSHOT_EVENT: &str = "snapshot";
@@ -24,6 +27,9 @@ pub struct Snapshot {
     pub tiles: Vec<Tile>,
     pub rows: Vec<DeviceRow>,
     pub poll_seconds: u64,
+    pub tile_layout: TileLayout,
+    /// The taskbar's own theme, which the tiles follow.
+    pub taskbar_light: bool,
     pub config_path: String,
     /// Set when the config file couldn't be read or written.
     pub error: Option<String>,
@@ -88,10 +94,13 @@ pub fn build_snapshot(app: &AppHandle) -> Snapshot {
             tiles: build_tiles(&config, devices.clone()),
             rows: build_device_rows(&config, &devices),
             poll_seconds: read_poll_interval(&config).as_secs(),
+            tile_layout: config.tile_layout.unwrap_or_default(),
+            taskbar_light: is_taskbar_light(),
             config_path,
             error: None,
         },
         Err(e) => Snapshot {
+            taskbar_light: is_taskbar_light(),
             config_path,
             error: Some(e.to_string()),
             ..Default::default()
