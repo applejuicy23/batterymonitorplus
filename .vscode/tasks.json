@@ -32,6 +32,21 @@
       "type": "shell",
       "command": "cargo run -p bmp-probe -- tiles --json",
       "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "app: tauri dev",
+      "type": "shell",
+      "command": "npm run tauri dev",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "isBackground": true,
+      "problemMatcher": ["$rustc"]
+    },
+    {
+      "label": "app: svelte check",
+      "type": "shell",
+      "command": "npm run check",
+      "options": { "cwd": "${workspaceFolder}/app" },
+      "problemMatcher": []
     }
   ]
 }
