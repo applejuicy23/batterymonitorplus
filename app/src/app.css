@@ -66,6 +66,15 @@ select {
   cursor: pointer;
 }
 
+option {
+  background: var(--card);
+  color: var(--text);
+}
+
+option:checked {
+  background: var(--subtle-hover);
+}
+
 button:hover:not(:disabled),
 select:hover {
   background: var(--subtle-hover);
