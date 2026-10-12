@@ -55,6 +55,8 @@ export interface Snapshot {
   tile_layout: TileLayout;
   /** Logical px from the taskbar's right edge; null = next to the tray. */
   tile_offset: number | null;
+  /** Tiles live inside the taskbar window instead of floating over it. */
+  tile_embed: boolean;
   taskbar_light: boolean;
   config_path: string;
   error: string | null;
