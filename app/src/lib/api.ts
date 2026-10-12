@@ -48,6 +48,11 @@ export function resetTilesPosition(): Promise<Snapshot> {
   return invoke<Snapshot>("reset_tiles_position");
 }
 
+/** Switches the tiles between living inside the taskbar and floating over it. */
+export function saveTileEmbed(embed: boolean): Promise<Snapshot> {
+  return invoke<Snapshot>("set_tile_embed", { embed });
+}
+
 /** Opens the settings window. */
 export function openSettings(): Promise<void> {
   return invoke("open_settings");
