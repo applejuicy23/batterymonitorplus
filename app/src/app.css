@@ -1,0 +1,88 @@
+/* Windows 11 look: Segoe UI Variable, Mica-like surfaces, system light/dark. */
+
+:root {
+  color-scheme: light dark;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+
+  --bg: #f3f3f3;
+  --card: #ffffff;
+  --subtle: rgba(0, 0, 0, 0.04);
+  --subtle-hover: rgba(0, 0, 0, 0.06);
+  --input: #ffffff;
+  --stroke: rgba(0, 0, 0, 0.08);
+  --taskbar: #eeeeee;
+  --text: #1b1b1b;
+  --text-secondary: #5f5f5f;
+  --text-tertiary: #8a8a8a;
+  --accent: #005fb8;
+  --on-accent: #ffffff;
+  --battery-ok: #0f7b0f;
+  --battery-mid: #c48400;
+  --battery-low: #c42b1c;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #202020;
+    --card: #2b2b2b;
+    --subtle: rgba(255, 255, 255, 0.05);
+    --subtle-hover: rgba(255, 255, 255, 0.08);
+    --input: #1f1f1f;
+    --stroke: rgba(255, 255, 255, 0.07);
+    --taskbar: #1c1c1c;
+    --text: #ffffff;
+    --text-secondary: #c5c5c5;
+    --text-tertiary: #9a9a9a;
+    --accent: #60cdff;
+    --on-accent: #000000;
+    --battery-ok: #6ccb5f;
+    --battery-mid: #fce100;
+    --battery-low: #ff99a4;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button,
+select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  border-bottom-color: rgba(0, 0, 0, 0.16);
+  border-radius: 4px;
+  padding: 4px 10px;
+  min-height: 30px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled),
+select:hover {
+  background: var(--subtle-hover);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.accent {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: transparent;
+}
+
+button.icon-btn {
+  min-width: 30px;
+  padding: 4px 6px;
+}
