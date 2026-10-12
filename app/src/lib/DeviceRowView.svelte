@@ -126,9 +126,12 @@
 <style>
   .row {
     display: grid;
-    grid-template-columns: 40px 1fr auto auto;
+    grid-template-columns: 40px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "icon main battery"
+      "icon controls controls";
     align-items: center;
-    gap: 12px;
+    gap: 8px 12px;
     padding: 10px 14px;
     background: var(--card);
     border: 1px solid var(--stroke);
@@ -139,6 +142,8 @@
     opacity: 0.6;
   }
   .icon {
+    grid-area: icon;
+    align-self: start;
     display: grid;
     place-items: center;
     width: 40px;
@@ -147,6 +152,7 @@
     background: var(--subtle);
   }
   .main {
+    grid-area: main;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -159,6 +165,8 @@
     color: var(--text);
   }
   .title-input {
+    width: 100%;
+    max-width: 420px;
     border: 1px solid transparent;
     border-radius: 4px;
     background: transparent;
@@ -184,6 +192,8 @@
     font-family: "Cascadia Mono", Consolas, monospace;
   }
   .battery {
+    grid-area: battery;
+    align-self: start;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -198,9 +208,14 @@
     color: var(--text-tertiary);
   }
   .controls {
+    grid-area: controls;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+  }
+  .switch {
+    margin-left: auto;
   }
   .order {
     display: flex;
