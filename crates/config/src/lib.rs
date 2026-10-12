@@ -48,9 +48,25 @@ pub struct Config {
     /// How often the app re-reads batteries; 60 s when unset.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub poll_seconds: Option<u64>,
+    /// How the taskbar tiles are drawn; one pill per device when unset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tile_layout: Option<TileLayout>,
     /// Per-device settings keyed by device id (`bt:...`, `razer:...`).
     #[serde(default)]
     pub devices: BTreeMap<String, DeviceSettings>,
+}
+
+/// Look of the taskbar tiles.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum TileLayout {
+    /// One `[icon %]` pill per device.
+    #[default]
+    Pills,
+    /// One tile with up to four devices in a 2x2 grid.
+    Combined,
+    /// One `[icon · name · battery · %]` pill per device.
+    Full,
 }
 
 /// Works out how long to wait between battery reads (at least 5 s, so a
