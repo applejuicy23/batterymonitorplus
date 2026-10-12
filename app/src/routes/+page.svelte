@@ -7,6 +7,7 @@
     fetchSnapshot,
     listenForSnapshots,
     refreshDevices,
+    resetTilesPosition,
     savePollSeconds,
     saveTileLayout,
     updateDevice,
@@ -72,6 +73,11 @@
     snapshot = await saveTileLayout(layout);
   }
 
+  /** Puts the taskbar tiles back in the automatic spot next to the tray. */
+  async function resetPosition() {
+    snapshot = await resetTilesPosition();
+  }
+
   /** Saves the picked poll interval. */
   async function changePollSeconds(event: Event) {
     const seconds = Number((event.target as HTMLSelectElement).value);
@@ -109,6 +115,15 @@
       <h2>Taskbar tiles</h2>
       <div class="card">
         <TilePreview tiles={snapshot.tiles} layout={snapshot.tile_layout} onPick={changeTileLayout} />
+        <div class="position">
+          <span>
+            Position: <b>{snapshot.tile_offset === null ? "next to the tray" : "where you dropped it"}</b>
+            <span class="hint">— drag the tiles along the taskbar to move them</span>
+          </span>
+          {#if snapshot.tile_offset !== null}
+            <button onclick={resetPosition}>Back next to the tray</button>
+          {/if}
+        </div>
       </div>
     </section>
 
@@ -190,6 +205,19 @@
     background: var(--card);
     border: 1px solid var(--stroke);
     border-radius: 8px;
+  }
+  .position {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--stroke);
+    font-size: 13px;
+  }
+  .hint {
+    color: var(--text-secondary);
   }
   .rows {
     display: flex;
