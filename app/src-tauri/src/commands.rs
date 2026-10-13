@@ -5,11 +5,13 @@
 
 use bmp_battery::DeviceKind;
 use bmp_config::merge::find_main_id;
-use bmp_config::{DeviceSettings, load_config, save_config};
+use bmp_config::{DeviceSettings, TileLayout, load_config, save_config};
 use serde::Deserialize;
 use tauri::AppHandle;
 
 use crate::monitor::{Snapshot, build_snapshot, publish_snapshot, refresh_devices_now};
+use crate::taskbar::resize_tiles_window;
+use crate::tray::show_main_window;
 
 /// One change to a device's settings, sent by the settings window.
 #[derive(Debug, Deserialize)]
@@ -71,6 +73,27 @@ pub async fn set_poll_seconds(app: AppHandle, seconds: u64) -> Result<Snapshot, 
     config.poll_seconds = Some(seconds);
     save_config(&config).map_err(|e| e.to_string())?;
     Ok(publish_snapshot(&app))
+}
+
+/// Saves how the taskbar tiles are drawn.
+#[tauri::command]
+pub async fn set_tile_layout(app: AppHandle, layout: TileLayout) -> Result<Snapshot, String> {
+    let mut config = load_config().map_err(|e| e.to_string())?;
+    config.tile_layout = Some(layout);
+    save_config(&config).map_err(|e| e.to_string())?;
+    Ok(publish_snapshot(&app))
+}
+
+/// Takes the width the tiles page needs and re-docks the tiles window.
+#[tauri::command]
+pub async fn set_tiles_width(app: AppHandle, width: f64) {
+    resize_tiles_window(&app, width);
+}
+
+/// Opens the settings window (clicking a taskbar tile).
+#[tauri::command]
+pub async fn open_settings(app: AppHandle) {
+    show_main_window(&app);
 }
 
 /// Writes one change into a device's settings.
