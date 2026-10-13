@@ -1,10 +1,15 @@
-//! The tiles window docked on the Windows taskbar, just left of the tray.
+//! The tiles window docked on the Windows taskbar.
 //!
 //! Windows 11 has no API to put custom panels into the taskbar, so the tiles
 //! live in a borderless, transparent, always-on-top tool window that sits
-//! over the empty part of the taskbar. A worker re-docks it every second,
-//! because the taskbar can move, change height or come back after an
-//! explorer restart, and clicking the taskbar pushes it below.
+//! over the taskbar. A worker re-docks it twice a second, because the
+//! taskbar can move, auto-hide, change height or come back after an
+//! explorer restart, and clicking the taskbar pushes the tiles below it.
+//!
+//! By default the tiles go left of the tray. Taskbar restylers (Windhawk's
+//! taskbar styler, etc.) move the tray visually while Windows still reports
+//! the old spot, so the user can drag the tiles and the spot is saved as an
+//! offset from the taskbar's right edge.
 
 use std::sync::Mutex;
 use std::thread;
@@ -12,23 +17,30 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Manager, WebviewWindow};
 use windows::Win32::Foundation::{HWND, RECT};
+use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromWindow};
 use windows::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows::Win32::UI::WindowsAndMessaging::{
     FindWindowExW, FindWindowW, GWL_EXSTYLE, GetWindowLongPtrW, GetWindowRect, HWND_TOPMOST,
-    SWP_NOACTIVATE, SetWindowLongPtrW, SetWindowPos, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+    IsWindowVisible, SWP_NOACTIVATE, SetWindowLongPtrW, SetWindowPos, WS_EX_NOACTIVATE,
+    WS_EX_TOOLWINDOW,
 };
 use windows::core::w;
 
 pub const TILES_WINDOW: &str = "tiles";
 
-const DOCK_EVERY: Duration = Duration::from_secs(1);
+const DOCK_EVERY: Duration = Duration::from_millis(500);
 /// Gap between the tiles and the tray, in logical pixels.
 const TRAY_GAP: f64 = 4.0;
+/// Below this many visible pixels the taskbar counts as auto-hidden.
+const MIN_VISIBLE_TASKBAR: i32 = 8;
 
-/// Width the tiles page asked for, in logical pixels (0 = nothing to show).
+/// What the tiles window needs to know to dock itself.
 #[derive(Default)]
 pub struct TilesState {
+    /// Width the tiles page asked for, in logical pixels (0 = nothing to show).
     pub width: Mutex<f64>,
+    /// Logical pixels from the taskbar's right edge; `None` = next to the tray.
+    pub offset: Mutex<Option<f64>>,
 }
 
 /// Where the tiles window should go, in physical screen pixels.
@@ -39,9 +51,16 @@ struct DockPlace {
     height: i32,
 }
 
-/// Turns the tiles window into a tool window that never takes focus, then
-/// starts the worker that keeps it docked.
-pub fn start_docking(app: AppHandle) {
+/// The taskbar and the tray area as Windows reports them.
+struct TaskbarRects {
+    taskbar: RECT,
+    tray_left: i32,
+}
+
+/// Turns the tiles window into a tool window that never takes focus, loads
+/// the saved spot and starts the worker that keeps it docked.
+pub fn start_docking(app: AppHandle, offset: Option<i32>) {
+    *app.state::<TilesState>().offset.lock().unwrap() = offset.map(f64::from);
     if let Some(window) = app.get_webview_window(TILES_WINDOW) {
         make_window_unfocusable(&window);
     }
@@ -59,16 +78,57 @@ pub fn resize_tiles_window(app: &AppHandle, width: f64) {
     dock_tiles_window(app);
 }
 
-/// Moves the tiles window next to the tray and keeps it on top; hides it
-/// when there is nothing to show or no taskbar (explorer restarting).
+/// Shifts the tiles sideways while the user drags them (`dx` in logical
+/// pixels, positive = right) and returns the new offset.
+pub fn move_tiles_window(app: &AppHandle, dx: f64) -> Option<f64> {
+    let current = read_tiles_offset(app)?;
+    let max = read_max_offset(app).unwrap_or(f64::MAX);
+    let moved = (current - dx).clamp(0.0, max.max(0.0));
+    *app.state::<TilesState>().offset.lock().unwrap() = Some(moved);
+    dock_tiles_window(app);
+    Some(moved)
+}
+
+/// Sets the saved spot (`None` puts the tiles back next to the tray).
+pub fn place_tiles_window(app: &AppHandle, offset: Option<i32>) {
+    *app.state::<TilesState>().offset.lock().unwrap() = offset.map(f64::from);
+    dock_tiles_window(app);
+}
+
+/// Works out the tiles' current offset from the taskbar's right edge, even
+/// when they're still in the automatic spot.
+pub fn read_tiles_offset(app: &AppHandle) -> Option<f64> {
+    if let Some(offset) = *app.state::<TilesState>().offset.lock().unwrap() {
+        return Some(offset);
+    }
+    let window = app.get_webview_window(TILES_WINDOW)?;
+    let rect = read_window_rect(window.hwnd().ok()?)?;
+    let rects = find_taskbar_rects()?;
+    let scale = window.scale_factor().unwrap_or(1.0);
+    Some(f64::from(rects.taskbar.right - rect.right) / scale)
+}
+
+/// Largest offset that still keeps the tiles on the taskbar.
+fn read_max_offset(app: &AppHandle) -> Option<f64> {
+    let window = app.get_webview_window(TILES_WINDOW)?;
+    let rects = find_taskbar_rects()?;
+    let scale = window.scale_factor().unwrap_or(1.0);
+    let width = *app.state::<TilesState>().width.lock().unwrap();
+    Some(f64::from(rects.taskbar.right - rects.taskbar.left) / scale - width)
+}
+
+/// Moves the tiles window to its spot and keeps it on top; hides it when
+/// there is nothing to show or the taskbar is hidden or missing.
 pub fn dock_tiles_window(app: &AppHandle) {
     let Some(window) = app.get_webview_window(TILES_WINDOW) else {
         return;
     };
-    let width = *app.state::<TilesState>().width.lock().unwrap();
+    let state = app.state::<TilesState>();
+    let width = *state.width.lock().unwrap();
+    let offset = *state.offset.lock().unwrap();
     let scale = window.scale_factor().unwrap_or(1.0);
     let place = if width >= 1.0 {
-        find_dock_place(width * scale, TRAY_GAP * scale)
+        find_dock_place(width * scale, offset.map(|o| o * scale), TRAY_GAP * scale)
     } else {
         None
     };
@@ -95,22 +155,63 @@ pub fn dock_tiles_window(app: &AppHandle) {
     }
 }
 
-/// Works out the spot left of the tray area, as tall as the taskbar.
-fn find_dock_place(width: f64, gap: f64) -> Option<DockPlace> {
+/// Works out the tiles' rectangle: at the saved offset from the taskbar's
+/// right edge, or left of the tray; always as tall as the taskbar.
+fn find_dock_place(width: f64, offset: Option<f64>, gap: f64) -> Option<DockPlace> {
+    let rects = find_taskbar_rects()?;
+    let taskbar = rects.taskbar;
+    let width = width.ceil() as i32;
+    let right = match offset {
+        Some(offset) => taskbar.right - offset.round() as i32,
+        None => rects.tray_left - gap.round() as i32,
+    };
+    let x = (right - width).clamp(taskbar.left, (taskbar.right - width).max(taskbar.left));
+    Some(DockPlace {
+        x,
+        y: taskbar.top,
+        width,
+        height: taskbar.bottom - taskbar.top,
+    })
+}
+
+/// Finds the taskbar and its tray; `None` when the taskbar is missing,
+/// hidden or slid off the screen (auto-hide).
+fn find_taskbar_rects() -> Option<TaskbarRects> {
     let taskbar = unsafe { FindWindowW(w!("Shell_TrayWnd"), None) }.ok()?;
+    if !unsafe { IsWindowVisible(taskbar) }.as_bool() {
+        return None;
+    }
     let taskbar_rect = read_window_rect(taskbar)?;
+    if !is_taskbar_on_screen(taskbar, &taskbar_rect) {
+        return None;
+    }
     let tray = unsafe { FindWindowExW(Some(taskbar), None, w!("TrayNotifyWnd"), None) }.ok();
     let tray_left = tray
         .and_then(read_window_rect)
         .map(|r| r.left)
         .unwrap_or(taskbar_rect.right);
-    let width = width.ceil() as i32;
-    Some(DockPlace {
-        x: tray_left - width - gap.round() as i32,
-        y: taskbar_rect.top,
-        width,
-        height: taskbar_rect.bottom - taskbar_rect.top,
+    Some(TaskbarRects {
+        taskbar: taskbar_rect,
+        tray_left,
     })
+}
+
+/// Checks that the taskbar is really showing, not slid off the edge of its
+/// monitor by auto-hide.
+fn is_taskbar_on_screen(taskbar: HWND, rect: &RECT) -> bool {
+    let monitor = unsafe { MonitorFromWindow(taskbar, MONITOR_DEFAULTTONEAREST) };
+    let mut info = MONITORINFO {
+        cbSize: size_of::<MONITORINFO>() as u32,
+        ..Default::default()
+    };
+    if !unsafe { GetMonitorInfoW(monitor, &mut info) }.as_bool() {
+        return true;
+    }
+    let screen = info.rcMonitor;
+    let visible_top = rect.top.max(screen.top);
+    let visible_bottom = rect.bottom.min(screen.bottom);
+    let fully_visible = visible_bottom - visible_top >= rect.bottom - rect.top;
+    fully_visible && visible_bottom - visible_top >= MIN_VISIBLE_TASKBAR
 }
 
 /// Reads a window's rectangle on screen.
