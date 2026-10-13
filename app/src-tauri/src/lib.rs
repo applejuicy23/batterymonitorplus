@@ -28,13 +28,15 @@ pub fn run_app() {
             commands::move_tiles_by,
             commands::save_tiles_position,
             commands::reset_tiles_position,
+            commands::set_tile_embed,
             commands::open_settings,
         ])
         .setup(|app| {
             create_tray(app.handle())?;
             start_polling(app.handle().clone());
-            let saved_offset = load_config().ok().and_then(|c| c.tile_offset);
-            start_docking(app.handle().clone(), saved_offset);
+            let config = load_config().unwrap_or_default();
+            let embed = config.tile_embed.unwrap_or(true);
+            start_docking(app.handle().clone(), config.tile_offset, embed);
             Ok(())
         })
         .on_window_event(|window, event| {
