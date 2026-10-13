@@ -11,7 +11,8 @@ use tauri::AppHandle;
 
 use crate::monitor::{Snapshot, build_snapshot, publish_snapshot, refresh_devices_now};
 use crate::taskbar::{
-    move_tiles_window, place_tiles_window, read_tiles_offset, resize_tiles_window,
+    embed_tiles_window, move_tiles_window, place_tiles_window, read_tiles_offset,
+    resize_tiles_window,
 };
 use crate::tray::show_main_window;
 
@@ -115,6 +116,16 @@ pub async fn reset_tiles_position(app: AppHandle) -> Result<Snapshot, String> {
     config.tile_offset = None;
     save_config(&config).map_err(|e| e.to_string())?;
     place_tiles_window(&app, None);
+    Ok(publish_snapshot(&app))
+}
+
+/// Switches the tiles between living inside the taskbar and floating over it.
+#[tauri::command]
+pub async fn set_tile_embed(app: AppHandle, embed: bool) -> Result<Snapshot, String> {
+    let mut config = load_config().map_err(|e| e.to_string())?;
+    config.tile_embed = Some(embed);
+    save_config(&config).map_err(|e| e.to_string())?;
+    embed_tiles_window(&app, embed);
     Ok(publish_snapshot(&app))
 }
 
