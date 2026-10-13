@@ -18,6 +18,21 @@
         "height": 600,
         "minWidth": 560,
         "minHeight": 420
+      },
+      {
+        "label": "tiles",
+        "title": "BatteryMonitor+ tiles",
+        "url": "/tiles",
+        "width": 120,
+        "height": 48,
+        "visible": false,
+        "decorations": false,
+        "transparent": true,
+        "shadow": false,
+        "resizable": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": false
       }
     ],
     "security": {
