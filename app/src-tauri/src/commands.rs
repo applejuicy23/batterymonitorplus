@@ -10,7 +10,9 @@ use serde::Deserialize;
 use tauri::AppHandle;
 
 use crate::monitor::{Snapshot, build_snapshot, publish_snapshot, refresh_devices_now};
-use crate::taskbar::resize_tiles_window;
+use crate::taskbar::{
+    move_tiles_window, place_tiles_window, read_tiles_offset, resize_tiles_window,
+};
 use crate::tray::show_main_window;
 
 /// One change to a device's settings, sent by the settings window.
@@ -88,6 +90,32 @@ pub async fn set_tile_layout(app: AppHandle, layout: TileLayout) -> Result<Snaps
 #[tauri::command]
 pub async fn set_tiles_width(app: AppHandle, width: f64) {
     resize_tiles_window(&app, width);
+}
+
+/// Shifts the tiles sideways while they're being dragged.
+#[tauri::command]
+pub async fn move_tiles_by(app: AppHandle, dx: f64) {
+    move_tiles_window(&app, dx);
+}
+
+/// Saves where the tiles were dropped after a drag.
+#[tauri::command]
+pub async fn save_tiles_position(app: AppHandle) -> Result<Snapshot, String> {
+    let offset = read_tiles_offset(&app).map(|o| o.round() as i32);
+    let mut config = load_config().map_err(|e| e.to_string())?;
+    config.tile_offset = offset;
+    save_config(&config).map_err(|e| e.to_string())?;
+    Ok(publish_snapshot(&app))
+}
+
+/// Puts the tiles back in the automatic spot next to the tray.
+#[tauri::command]
+pub async fn reset_tiles_position(app: AppHandle) -> Result<Snapshot, String> {
+    let mut config = load_config().map_err(|e| e.to_string())?;
+    config.tile_offset = None;
+    save_config(&config).map_err(|e| e.to_string())?;
+    place_tiles_window(&app, None);
+    Ok(publish_snapshot(&app))
 }
 
 /// Opens the settings window (clicking a taskbar tile).
