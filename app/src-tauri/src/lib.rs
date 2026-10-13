@@ -6,6 +6,7 @@ mod monitor;
 mod taskbar;
 mod tray;
 
+use bmp_config::load_config;
 use tauri::WindowEvent;
 
 use crate::monitor::{MonitorState, start_polling};
@@ -24,12 +25,16 @@ pub fn run_app() {
             commands::set_poll_seconds,
             commands::set_tile_layout,
             commands::set_tiles_width,
+            commands::move_tiles_by,
+            commands::save_tiles_position,
+            commands::reset_tiles_position,
             commands::open_settings,
         ])
         .setup(|app| {
             create_tray(app.handle())?;
             start_polling(app.handle().clone());
-            start_docking(app.handle().clone());
+            let saved_offset = load_config().ok().and_then(|c| c.tile_offset);
+            start_docking(app.handle().clone(), saved_offset);
             Ok(())
         })
         .on_window_event(|window, event| {
